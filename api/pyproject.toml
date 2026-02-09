@@ -1,0 +1,12 @@
+[project]
+name = "ett"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "google-api-python-client>=2.188.0",
+    "google-auth>=2.48.0",
+    "google-auth-oauthlib>=1.2.4",
+    "youtube-transcript-api>=1.2.4",
+]
