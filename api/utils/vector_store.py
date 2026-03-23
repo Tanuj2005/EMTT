@@ -1,6 +1,6 @@
 import chromadb
 from chromadb.utils import embedding_functions
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 
 
@@ -93,3 +93,92 @@ class TranscriptVectorStore:
         except Exception as e:
             print(f"Error deleting video: {e}")
             return False
+        
+    def fetch_for_rag(
+        self,
+        query: str,
+        video_id: Optional[str] = None,
+        top_k: int = 6,
+        max_context_chars: int = 3500,
+        max_distance: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetch semantically relevant chunks and return LLM-ready context + sources.
+
+        Args:
+            query: User question
+            video_id: Optional filter for one video
+            top_k: Number of chunks to retrieve
+            max_context_chars: Stop adding chunks after this context size
+            max_distance: Optional distance cutoff (lower is better in Chroma)
+
+        Returns:
+            {
+              "context": str,
+              "chunks": [ {text, metadata, distance, score, citation} ],
+              "count": int
+            }
+        """
+        where_filter = {"video_id": video_id} if video_id else None
+
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=top_k,
+            where=where_filter,
+            include=["documents", "metadatas", "distances"]
+        )
+
+        docs = (results.get("documents") or [[]])[0]
+        metas = (results.get("metadatas") or [[]])[0]
+        dists = (results.get("distances") or [[]])[0]
+
+        chunks: List[Dict[str, Any]] = []
+        context_parts: List[str] = []
+        current_len = 0
+
+        for i, text in enumerate(docs):
+            metadata = metas[i] if i < len(metas) else {}
+            distance = dists[i] if i < len(dists) else None
+
+            if max_distance is not None and distance is not None and distance > max_distance:
+                continue
+
+            citation = self._build_citation(metadata)
+            score = (1.0 / (1.0 + distance)) if distance is not None else None
+
+            block = f"[{citation}]\n{text}"
+            next_len = current_len + len(block) + 2
+            if next_len > max_context_chars:
+                break
+
+            context_parts.append(block)
+            current_len = next_len
+
+            chunks.append({
+                "text": text,
+                "metadata": metadata,
+                "distance": distance,
+                "score": score,
+                "citation": citation
+            })
+
+        return {
+            "context": "\n\n".join(context_parts),
+            "chunks": chunks,
+            "count": len(chunks)
+        }
+
+    def _build_citation(self, metadata: Dict[str, Any]) -> str:
+        video_id = metadata.get("video_id", "unknown_video")
+        start = metadata.get("start", 0)
+        ts = self._format_seconds(start)
+        return f"{video_id} @ {ts}"
+
+    @staticmethod
+    def _format_seconds(seconds: float) -> str:
+        s = int(seconds or 0)
+        h, rem = divmod(s, 3600)
+        m, sec = divmod(rem, 60)
+        if h > 0:
+            return f"{h:02}:{m:02}:{sec:02}"
+        return f"{m:02}:{sec:02}"
