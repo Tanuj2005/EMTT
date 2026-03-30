@@ -189,13 +189,3 @@ def store_transcript_for_rag(video_url: str, vector_store: TranscriptVectorStore
     }
 
 
-# --- Example usage ---
-if __name__ == "__main__":
-    result = store_transcript_for_rag("https://www.youtube.com/watch?v=ssYt09bCgUY")
-
-# Search for relevant content
-    store = TranscriptVectorStore()
-    matches = store.search("moltbot", n_results=5)
-
-    for match in matches:
-        print(f"[{match['metadata']['start']:.1f}s]: {match['text']}")
