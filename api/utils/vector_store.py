@@ -2,7 +2,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 from typing import List, Dict, Any, Optional
 import uuid
-
+from pathlib import Path
 
 class TranscriptVectorStore:
     """Store and retrieve transcript segments using ChromaDB."""
