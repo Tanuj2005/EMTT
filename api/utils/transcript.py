@@ -91,7 +91,7 @@ def get_youtube_transcript(video_url: str) -> dict:
             return {"success": False, "transcript": None, "segments": None, "error": f"An unexpected error occurred: {str(e)}"}
 
 
-# ← NEW FUNCTION: this is what rag.py imports and was missing
+
 def fetch_transcript_segments(video_id: str, chunk_size: int = 500) -> list:
     """
     Fetch and chunk transcript segments by video ID, ready for vector storage.
